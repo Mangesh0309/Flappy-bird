@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" href="styles.css">
+        <title>Flappy Bird</title>
+    </head>
+    <body>
+        <div class="container">
+            <canvas id="gameCanvas" width="900" height="600"></canvas>
+            <div id="gameOver" class="hidden">
+                <h1>Game Over!</h1>
+                <p>Score: <span id="finalScore">0</span></p>
+                <button onclick="resetGame()">Play Again</button>
+            </div>
+            <div id="score">Score: 0</div>
+        </div>
+        <script>
+            // Game variables
+            let canvas = document.getElementById('gameCanvas');
+            let ctx = canvas.getContext('2d');
+            let bird = {
+                x: 50,
+                y: 200,
+                velocity: 0,
+                gravity: 0.1,
+                jump: -4,
+                radius: 10
+            };
+            let pipes = [];
+            let score = 0;
+            let gameRunning = false;
+            let gameFrame = 0;
+            
+            // Constants
+            const PIPE_SPACING = 150;
+            const PIPE_SPEED = 2;
+            const PIPE_WIDTH = 50;
+            const GAP_HEIGHT = 150;
+
+            function drawBird() {
+                ctx.beginPath();
+                ctx.arc(bird.x, bird.y, bird.radius, 0, Math.PI * 2);
+                ctx.fillStyle = '#FFD700';
+                ctx.fill();
+                ctx.strokeStyle = '#000';
+                ctx.stroke();
+                ctx.closePath();
+            }
+
+            function drawPipe(pipe) {
+                ctx.fillStyle = '#75B741';
+                // Draw top pipe
+                ctx.fillRect(pipe.x, 0, PIPE_WIDTH, pipe.top);
+                // Draw bottom pipe
+                ctx.fillRect(pipe.x, pipe.top + GAP_HEIGHT, PIPE_WIDTH, canvas.height);
+            }
+
+            function createPipe() {
+                let minHeight = 50;
+                let maxHeight = canvas.height - GAP_HEIGHT - minHeight;
+                let height = Math.floor(Math.random() * (maxHeight - minHeight + 1) + minHeight);
+                return {
+                    x: canvas.width,
+                    top: height,
+                    passed: false
+                };
+            }
+
+            function checkCollision(pipe) {
+                // Bird collision with top pipe
+                if (bird.x + bird.radius > pipe.x && 
+                    bird.x - bird.radius < pipe.x + PIPE_WIDTH &&
+                    bird.y - bird.radius < pipe.top) {
+                    return true;
+                }
+                // Bird collision with bottom pipe
+                if (bird.x + bird.radius > pipe.x && 
+                    bird.x - bird.radius < pipe.x + PIPE_WIDTH &&
+                    bird.y + bird.radius > pipe.top + GAP_HEIGHT) {
+                    return true;
+                }
+                return false;
+            }
+
+            function updateScore() {
+                document.getElementById('score').textContent = `Score: ${score}`;
+                document.getElementById('finalScore').textContent = score;
+            }
+
+            function gameOver() {
+                gameRunning = false;
+                document.getElementById('gameOver').classList.remove('hidden');
+            }
+
+            function resetGame() {
+                bird.y = 200;
+                bird.velocity = 0;
+                pipes = [];
+                score = 0;
+                gameFrame = 0;
+                updateScore();
+                document.getElementById('gameOver').classList.add('hidden');
+                gameRunning = true;
+                animate();
+            }
+
+            function animate() {
+                if (!gameRunning) return;
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Update bird
+                bird.velocity += bird.gravity;
+                bird.y += bird.velocity;
+                
+                // Check boundaries
+                if (bird.y + bird.radius > canvas.height || bird.y - bird.radius < 0) {
+                    gameOver();
+                }
+
+                // Create new pipes
+                if (gameFrame % 150 === 0) {
+                    pipes.push(createPipe());
+                }
+
+                // Update and draw pipes
+                for (let i = pipes.length - 1; i >= 0; i--) {
+                    pipes[i].x -= PIPE_SPEED;
+                    
+                    // Remove off-screen pipes
+                    if (pipes[i].x + PIPE_WIDTH < 0) {
+                        pipes.splice(i, 1);
+                        continue;
+                    }
+
+                    // Check for score
+                    if (!pipes[i].passed && pipes[i].x + PIPE_WIDTH < bird.x) {
+                        score++;
+                        pipes[i].passed = true;
+                        updateScore();
+                    }
+
+                    // Check collision
+                    if (checkCollision(pipes[i])) {
+                        gameOver();
+                        return;
+                    }
+
+                    drawPipe(pipes[i]);
+                }
+
+                drawBird();
+                gameFrame++;
+                requestAnimationFrame(animate);
+            }
+
+            // Event listeners
+            document.addEventListener('keydown', function(e) {
+                if (e.code === 'Space') {
+                    if (!gameRunning) {
+                        resetGame();
+                    }
+                    bird.velocity = bird.jump;
+                }
+            });
+
+            canvas.addEventListener('click', function() {
+                if (!gameRunning) {
+                    resetGame();
+                }
+                bird.velocity = bird.jump;
+            });
+
+            // Start game
+            resetGame();
+        </script>
+    </body>
+</html>
